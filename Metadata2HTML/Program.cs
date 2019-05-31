@@ -1,7 +1,8 @@
-﻿using ESRI.ArcGIS;
+﻿using System;
+using ESRI.ArcGIS;
 using ESRI.ArcGIS.esriSystem;
-using ESRI.ArcGIS.Carto;
-using System;
+using ESRI.ArcGIS.Geodatabase;
+using ESRI.ArcGIS.DataSourcesGDB;
 
 /*
  * Opens a *.lyr file from a console app and displays various properties.
@@ -10,7 +11,7 @@ using System;
  * for methods on the ILayerFile.
  */
 
-namespace ReadLayerFile
+namespace Metadata2HTML
 {
     static class Program
     {
@@ -22,45 +23,36 @@ namespace ReadLayerFile
 
             try
             {
-                // Get Layer File
+                // Get Feature Class; Assume it is 
 
-                string lyrPath = @"X:\GIS\ThemeMgr\GLBA Themes\Basemap\GLBA Annotation 150K.lyr";
-                if (args.Length > 0)
+                string workspacePath = @"X:\AKR\Statewide\cultural\AKNetworks.gdb";
+                string featureName = "ARCN";
+                if (args.Length > 1)
                 {
-                    lyrPath = args[0];
+                    workspacePath = args[0];
+                    featureName = args[1];
                 }
 
-                // Open the Layer File
+                // Open the Feature Class
+                IWorkspaceFactory workspaceFactory = new FileGDBWorkspaceFactory();
+                var workSpace = (IDataset) workspaceFactory.OpenFromFile(workspacePath, 0);
+                // Or .Open() a new WorkspaceName after setting the ProgID and Path
+                var featureClassName = (IDatasetName)new FeatureClassName();
+                featureClassName.Name = featureName;
+                featureClassName.WorkspaceName = (IWorkspaceName)workSpace.FullName;
+                ((IName)featureClassName).Open();
+                IMetadata metadata = (IMetadata)featureClassName;
+                IXmlPropertySet2 xmlPropertySet2 = (IXmlPropertySet2)metadata.Metadata;
+                String xmlDoc = xmlPropertySet2.GetXml("");
 
-                ILayerFile layerFile = new LayerFile();
-                if (layerFile.IsPresent[lyrPath] && layerFile.IsLayerFile[lyrPath])
-                {
-                    layerFile.Open(lyrPath);
-                    try
-                    {
-                        // Read the Layer Contents
-                        Console.WriteLine($"Contents of Document: {lyrPath}");
-                        var layer = layerFile.Layer;
-                        Console.WriteLine($"  Name: {layer.Name}");
-                        Console.WriteLine($"  Is Valid: {layer.Valid}");
-                        Console.WriteLine($"  Is Composite: {layer is ICompositeLayer}");
-                    }
-                    finally
-                    {
-                        layerFile.Close();
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Invalid Layer File Path: {lyrPath}");
-                }
+                Console.WriteLine(xmlDoc);
 
                 Shutdown(license, "Successful Completion");
 
             }
             catch (Exception exc)
             {
-                Shutdown(license, $"Exception caught while reading Layer File. {exc.Message}");
+                Shutdown(license, $"Exception caught while converting metadata to html. {exc.Message}");
             }
         }
 
