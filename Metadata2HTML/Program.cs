@@ -1,8 +1,13 @@
 ﻿using System;
+using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
 using ESRI.ArcGIS;
 using ESRI.ArcGIS.esriSystem;
 using ESRI.ArcGIS.Geodatabase;
 using ESRI.ArcGIS.DataSourcesGDB;
+using System.Xml;
+using System.Xml.Xsl;
 
 /*
  * Opens a *.lyr file from a console app and displays various properties.
@@ -23,7 +28,10 @@ namespace Metadata2HTML
 
             try
             {
-                // Get Feature Class; Assume it is 
+                // Get Feature Class
+
+                // X:\AKR\Statewide\cultural\AKNetworks.gdb\ARCN                  // internal ArcGIS format
+                // X:\AKR\Statewide\cultural\adminbnd.gdb\AdministrativeBoundary  // internal FGDC format
 
                 string workspacePath = @"X:\AKR\Statewide\cultural\AKNetworks.gdb";
                 string featureName = "ARCN";
@@ -45,7 +53,47 @@ namespace Metadata2HTML
                 IXmlPropertySet2 xmlPropertySet2 = (IXmlPropertySet2)metadata.Metadata;
                 String xmlDoc = xmlPropertySet2.GetXml("");
 
-                Console.WriteLine(xmlDoc);
+                // Console.WriteLine(xmlDoc);
+
+                // XML input
+                XmlReader xmlReader = XmlReader.Create(new StringReader(xmlDoc));
+
+
+                // Style Sheet
+                var xlstFilePath = @"C:\Program Files (x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets\ArcGIS_ItemDescription.xsl";
+                //var xlstFilePath = @"C:\Program Files (x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets\ArcGIS.xsl";
+
+                //XmlReader xlstReader = XmlReader.Create(xlstFilePath, null, new XmlParserContext(baseURI:@"C:\Program Files (x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets"));
+
+                // XLST Transform - see https://docs.microsoft.com/en-us/dotnet/standard/data/xml/inputs-to-the-xslcompiledtransform-class
+                // parameter is for debugging
+                XslCompiledTransform transform = new XslCompiledTransform(true);
+                //XsltSettings settings = new XsltSettings();
+                //settings.EnableScript = true;
+                var myResolver = new MyXmlUrlResolver();
+                XsltArgumentList xslArg = new XsltArgumentList();
+                //Console.WriteLine($"idTags = {ESRI.ArcGIS.Metadata.Editor.XsltExtensionFunctions.GetResString("idTags")}");
+                var esri = new ESRI.ArcGIS.Metadata.Editor.XsltExtensionFunctions();
+                xslArg.AddExtensionObject("http://www.esri.com/metadata/", esri);
+                //xslArg.AddExtensionObject("http://www.esri.com/metadata/res", esri);
+                Console.WriteLine("Loading/compiling the XLST code");
+                //transform.Load(xlstFilePath, XsltSettings.TrustedXslt, myResolver);
+                //transform.Load(xlstFilePath, settings, myResolver);
+                transform.Load(xlstFilePath, null, myResolver);
+                Console.WriteLine("Transforming the XML to html");
+                // HTML output
+                using (TextWriter writer = new Utf8StringWriter())
+                {
+                    using (XmlWriter xmlWriter = XmlWriter.Create(writer))
+                    {
+                        transform.Transform(xmlReader, xslArg, xmlWriter);
+                    }
+                    // Replace the localizable elements <res:xxx /> with the localized text
+                    var pattern = @"<res:(\w+)\s*/>";
+                    MatchEvaluator evaluator = EsriLocalizer;
+                    var htmlText = Regex.Replace(writer.ToString(), pattern, evaluator);
+                    System.IO.File.WriteAllText(@"C:\tmp\metadata.html", htmlText);
+                }
 
                 Shutdown(license, "Successful Completion");
 
@@ -54,6 +102,11 @@ namespace Metadata2HTML
             {
                 Shutdown(license, $"Exception caught while converting metadata to html. {exc.Message}");
             }
+        }
+
+        private static string EsriLocalizer(Match match)
+        {
+            return ESRI.ArcGIS.Metadata.Editor.XsltExtensionFunctions.GetResString(match.Groups[1].Value);
         }
 
         private static AoInitialize GetLicense(ProductCode product, esriLicenseProductCode level)
@@ -86,6 +139,25 @@ namespace Metadata2HTML
             }
 
             license.Shutdown();
+        }
+    }
+
+    class MyXmlUrlResolver : XmlUrlResolver
+    {
+        public override Uri ResolveUri(Uri baseUri, string relativeUri)
+        {
+            if (baseUri != null)
+                return base.ResolveUri(baseUri, relativeUri);
+            else
+                return base.ResolveUri(new Uri(@"file://C:\Program Files(x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets"), relativeUri);
+        }
+    }
+
+    public class Utf8StringWriter : StringWriter
+    {
+        public override Encoding Encoding
+        {
+            get { return Encoding.UTF8; }
         }
     }
 }
