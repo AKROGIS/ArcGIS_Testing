@@ -64,10 +64,11 @@ namespace Metadata2HTML
 
                 // Style Sheet
 
-                var xlstFilePath = @"C:\Program Files (x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets\ArcGIS_ItemDescription.xsl";
+                //var xlstFilePath = @"C:\Program Files (x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets\ArcGIS_ItemDescription.xsl";
                 //var xlstFilePath = @"C:\Program Files (x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets\ArcGIS.xsl";
                 //var xlstFilePath = @"C:\Program Files (x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets\ArcGIS_Imports\XML.xslt";
                 //var xlstFilePath = @"C:\Program Files (x86)\ArcGIS\Desktop10.5\Metadata\Stylesheets\ArcGIS_Imports\FGDC.xslt";  //No good - only works as an included stylesheet
+                var xlstFilePath = @"C:\Users\RESarwas\Documents\GitHub\ArcGIS_Testing\Metadata2HTML\Xml.xslt";
 
                 // Load the stylesheet
                 // Loading also compiles the stylesheet, so there is a large startup cost
