@@ -1,4 +1,4 @@
-# ArcObjects_Testing
+# ArcObjects Testing
 
 This repo is a C# Visual Studio solution with a number of
 projects (console apps) for testing various functionality
